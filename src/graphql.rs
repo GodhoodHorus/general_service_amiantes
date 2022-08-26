@@ -63,7 +63,7 @@ impl Mutation {
 
         let user: User = users
             .filter(name.eq_all(input.name))
-            .first(&conn)
+            .first::<User>(&conn)
             .expect("No user found with this credentials");
 
         let parsed_hash = PasswordHash::new(&user.password)?;

@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: "McLaren";
+    src: url('/fonts/McLaren/McLaren-Regular.ttf') format('truetype');
+}

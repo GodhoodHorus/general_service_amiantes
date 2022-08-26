@@ -1,0 +1,107 @@
+input AuthenticateUser {
+  name: String!
+  password: String!
+}
+
+input CreateUserInput {
+  authorizationId: Int!
+  name: String!
+  password: String!
+}
+
+input CreateClientInput {
+  name: String!
+  address: CreateAddressInput
+  interlocutors: CreateInterlocutorsInput
+}
+
+type CreateAddressInput {
+  street: String!
+  streetNumber: Int!
+}
+
+type CreateInterlocutorsInput {
+  interlocutorsList: [CreateInterlocutorInput!]!
+}
+
+type CreateInterlocutorInput {
+  name: String!
+  position: String!
+}
+
+
+input CreateNewWorksite {
+  clientId: Int!
+  worksite: CreateWorksiteContent
+}
+
+type CreateWorksiteContent {
+  worksiteInformation: CreateWorksiteInformation
+  leads: [CreateLead!]
+  asbestos: [CreateAsbestos!]
+}
+
+type CreateWorksiteInformation {
+  folderNumber: String!
+}
+
+type CreateLead {
+  number: Int!
+  localization: String!
+  area: String!
+  numberUd: Int!
+  diagnosticUnity: String!
+  substrate: String!
+  exposedCoating: String!
+  measureLocalization: String!
+  measure: Int!
+  incertitude: Int!
+  result: String!
+}
+
+type CreateAsbestos {
+  unit: Int!
+  area: String!
+  equipments: String!
+  localization: String!
+  surveyedElement: String!
+  materialsDescription: String!
+  sampling: String!
+  dateOfSampling: String!
+  fcrResult: String!
+  conservationState: String!
+  equipmentVolume: String!
+  materialVolume: String!
+  pictureId: Int!
+}
+
+
+type Authorization {
+  id: Int!
+  level: String!
+}
+
+type User {
+  id: Int!
+  authorizationId: Int!
+  name: String!
+  password: String!
+  authorization: [Authorization!]!
+}
+
+type Query {
+  user(userIdL Int!): User!
+  authorization: [Authorization!]!
+}
+
+type Mutation {
+  authenticateUser(input: AuthenticateUser!): User!
+  createUser(input: CreateUserInput!): User!
+  createClient(input: CreateClientInput!): Client!
+  createWorksite(input: CreateNewWorksite!): Worksite!
+}
+
+schema {
+  query: Query,
+  mutation: Mutation
+}
