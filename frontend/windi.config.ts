@@ -11,6 +11,8 @@ export default defineConfig({
           'white': '#ECEFF8',
           'black': '#1E212A',
           'green': '#25dc63',
+          'blue': '#4F9CC8',
+          'lightblue': '#9DBED4'
         },
         fontFamily: {
           'mclaren': ['McLaren', 'cursive'],

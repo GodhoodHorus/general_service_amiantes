@@ -5,8 +5,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-
-use crate::models::clients::{Client, CreateClientInput, Interlocutor, Interlocutors, NewClient};
+use crate::models::clients::{Client, ClientInput, Interlocutor, Interlocutors, NewClient, AddressInput, Address};
 use crate::models::worksites::{CreateNewWorksite, NewWorksite, Worksite, WorksiteContent};
 use juniper::{graphql_value, EmptySubscription, FieldError, FieldResult, RootNode};
 
@@ -33,6 +32,70 @@ impl Query {
         }
 
     }
+
+    #[graphql(description = "Fetch a client")]
+    fn client(context: &GraphQLContext, client_id: i32) -> FieldResult<Client> {
+        use crate::schema::clients::dsl::*;
+        use diesel::prelude::*;
+
+        let conn = context.pool.get()?;
+
+        let client = clients.find(client_id).get_result::<Client>(&conn);
+
+        if client.is_ok() {
+            Ok(client.unwrap())
+        } else {
+            Err(FieldError::new(
+                "Could not get client",
+                graphql_value!({ "authentication_error": "Invalid value" }),
+            ))
+        }
+
+    }
+
+    #[graphql(description = "Fetch a clients")]
+    fn clients(context: &GraphQLContext, mut offset: i32) -> FieldResult<Vec<Client>> {
+        use crate::schema::clients::dsl::*;
+        use diesel::prelude::*;
+
+        let conn = context.pool.get()?;
+
+        let client = clients
+            .limit(10)
+            .offset(offset.into())
+            .get_results::<Client>(&conn);
+
+        if client.is_ok() {
+            Ok(client.unwrap())
+        } else {
+            Err(FieldError::new(
+                "Could not get client",
+                graphql_value!({ "authentication_error": "Invalid value" }),
+            ))
+        }
+
+    }
+
+    #[graphql(description = "Fetch a worksite")]
+    fn worksite(context: &GraphQLContext, worksite_id: i32) -> FieldResult<Worksite> {
+        use crate::schema::worksites::dsl::*;
+        use diesel::prelude::*;
+
+        let conn = context.pool.get()?;
+
+        let worksite_result = worksites.find(worksite_id).first::<Worksite>(&conn);
+
+        if worksite_result.is_ok() {
+            Ok(worksite_result.unwrap())
+        } else {
+            Err(FieldError::new(
+                "Could not get worksite",
+                graphql_value!({ "authentication_error": "Invalid value" }),
+            ))
+        }
+
+    }
+
 
     #[graphql(description = "Get user Authorization")]
     fn authorization(context: &GraphQLContext) -> FieldResult<Vec<Authorization>> {
@@ -125,29 +188,30 @@ impl Mutation {
     // ╚██████╗██║  ██║███████╗██║  ██║   ██║   ███████╗╚██████╗███████╗██║███████╗██║ ╚████║   ██║
     //  ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝╚══════╝╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝
     #[graphql(description = "create a new client")]
-    fn create_client(context: &GraphQLContext, input: CreateClientInput) -> FieldResult<Client> {
+    fn create_client(context: &GraphQLContext, input: ClientInput) -> FieldResult<Client> {
         use crate::schema::clients::dsl::*;
         use diesel::prelude::*;
 
-        let input_iterators = input.interlocutors;
-
-        let mut received_interlocutor = vec![];
-
-        received_interlocutor.extend(input_iterators.unwrap().interlocutors_list.into_iter().map(
-            |i| Interlocutor {
-                name: i.name,
-                position: i.position,
-            },
-        ));
-
-        let new_interlocutors = Interlocutors {
-            interlocutors_list: received_interlocutor,
-        };
+        // let input_iterators = input.interlocutors;
+        //
+        // let mut received_interlocutor = vec![];
+        //
+        // received_interlocutor.extend(input_iterators.unwrap().interlocutors_list.into_iter().map(
+        //     |i| Interlocutor {
+        //         name: i.name,
+        //         position: i.position,
+        //     },
+        // ));
+        //
+        // let new_interlocutors = Interlocutors {
+        //     interlocutors_list: received_interlocutor,
+        // };
 
         let new_client: NewClient = NewClient {
             name: &input.name,
             address: &diesel_json::Json::new(input.address.unwrap().into()),
-            interlocutors: &diesel_json::Json::new(new_interlocutors),
+            interlocutors:  None,
+            // interlocutors: &diesel_json::Json::new(new_interlocutors),
             created_at: &chrono::offset::Utc::now().naive_utc(),
             edited_at: &chrono::offset::Utc::now().naive_utc(),
         };
@@ -158,7 +222,43 @@ impl Mutation {
             .values(new_client)
             .get_result(&conn);
 
-        Ok(created_client.expect("Could not create a client"))
+        if created_client.is_ok() {
+            Ok(created_client.unwrap())
+        } else {
+            Err(FieldError::new(
+                "Could not create the client",
+                graphql_value!({ "authentication_error": "Invalid value" }),
+            ))
+        }
+    }
+
+    #[graphql(description = "update a client address")]
+    fn update_client_address(context: &GraphQLContext, receive_id: i32, input: AddressInput) -> FieldResult<Client> {
+        use crate::schema::clients::dsl::*;
+        use diesel::prelude::*;
+
+        let conn  = context.pool.get()?;
+
+        let other_address = Address {
+            street: input.street,
+            street_number: input.street_number,
+        };
+
+        let update_client_address = diesel::update(clients)
+            .filter(id.eq_all(receive_id))
+            .set(address.eq_all(&diesel_json::Json::new(other_address)))
+            .get_result::<Client>(&conn);
+
+        if update_client_address.is_ok() {
+            Ok(update_client_address.unwrap())
+        } else {
+            Err(FieldError::new(
+                "Could not update the address of the client",
+                graphql_value!({ "authentication_error": "Invalid value" }),
+            ))
+        }
+
+
     }
 
     //  ██████╗██████╗ ███████╗ █████╗ ████████╗███████╗██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗███████╗██╗████████╗███████╗

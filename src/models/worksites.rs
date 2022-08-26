@@ -63,6 +63,22 @@ impl WorksiteContent {
             self.worksite_information.as_ref()
         }
     }
+
+    fn leads(&self) -> Option<&Vec<Lead>> {
+        if self.leads.is_none() {
+            None
+        } else {
+            self.leads.as_ref()
+        }
+    }
+
+    fn asbestos(&self) -> Option<&Vec<Asbestos>> {
+        if self.asbestos.is_none() {
+            None
+        } else {
+            self.asbestos.as_ref()
+        }
+    }
 }
 
 #[derive(Serialize, Queryable, Identifiable, Debug)]

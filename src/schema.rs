@@ -10,7 +10,7 @@ table! {
         id -> Int4,
         name -> Varchar,
         address -> Jsonb,
-        interlocutors -> Jsonb,
+        interlocutors -> Nullable<Jsonb>,
         created_at -> Timestamp,
         edited_at -> Timestamp,
     }

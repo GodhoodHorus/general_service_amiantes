@@ -11,7 +11,7 @@ pub struct Address {
 }
 
 // Define the json structure of a single interlocutor
-#[derive(Debug, Serialize, Deserialize, GraphQLObject)]
+#[derive(Debug, Serialize, Deserialize, GraphQLObject, Clone)]
 pub struct Interlocutor {
     pub name: String,
     pub position: String,
@@ -28,7 +28,7 @@ pub struct Client {
     pub id: i32,
     pub name: String,
     pub address: Json<Address>,
-    pub interlocutors: Json<Interlocutors>,
+    pub interlocutors: Option<Json<Interlocutors>>,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
 }
@@ -44,11 +44,11 @@ impl Client {
     }
 
     fn address(&self) -> &Address {
-        self.address.deref().to_owned()
+        self.address.as_ref()
     }
 
     fn interlocutors(&self) -> &Interlocutors {
-        self.interlocutors.deref().to_owned()
+        self.interlocutors.as_deref().unwrap()
     }
 
     fn created_at(&self) -> String {
@@ -65,26 +65,26 @@ impl Client {
 pub struct NewClient<'a> {
     pub name: &'a String,
     pub address: &'a Json<Address>,
-    pub interlocutors: &'a Json<Interlocutors>,
+    pub interlocutors: Option<Json<Interlocutors>>,
     pub created_at: &'a NaiveDateTime,
     pub edited_at: &'a NaiveDateTime,
 }
 
 #[derive(GraphQLInputObject)]
-pub struct CreateClientInput {
+pub struct ClientInput {
     pub name: String,
-    pub address: Option<CreateAddressInput>,
-    pub interlocutors: Option<CreateInterlocutorsInput>,
+    pub address: Option<AddressInput>,
+    pub interlocutors: Option<InterlocutorsInput>,
 }
 
 #[derive(GraphQLInputObject, Serialize, Deserialize)]
-pub struct CreateAddressInput {
+pub struct AddressInput {
     pub street: String,
     pub street_number: i32,
 }
 
-impl From<CreateAddressInput> for Address {
-    fn from(f: CreateAddressInput) -> Self {
+impl From<AddressInput> for Address {
+    fn from(f: AddressInput) -> Self {
         let serialised = serde_json::to_string(&f).unwrap();
         serde_json::from_str::<Address>(&serialised).unwrap()
     }
@@ -92,20 +92,20 @@ impl From<CreateAddressInput> for Address {
 
 // Define the json structure of a single interlocutor
 #[derive(GraphQLInputObject, Serialize, Deserialize, Clone)]
-pub struct CreateInterlocutorInput {
+pub struct InterlocutorInput {
     pub name: String,
     pub position: String,
 }
 
-impl From<CreateInterlocutorInput> for Interlocutor {
-    fn from(f: CreateInterlocutorInput) -> Self {
+impl From<InterlocutorInput> for Interlocutor {
+    fn from(f: InterlocutorInput) -> Self {
         let serialised = serde_json::to_string(&f).unwrap();
         serde_json::from_str::<Interlocutor>(&serialised).unwrap()
     }
 }
 
-impl Extend<&'static CreateInterlocutorInput> for Vec<Interlocutor> {
-    fn extend<T: IntoIterator<Item = &'static CreateInterlocutorInput>>(&mut self, iter: T) {
+impl Extend<&'static InterlocutorInput> for Vec<Interlocutor> {
+    fn extend<T: IntoIterator<Item = &'static InterlocutorInput>>(&mut self, iter: T) {
         for item in iter {
             self.push(Interlocutor {
                 name: item.name.to_owned(),
@@ -117,6 +117,6 @@ impl Extend<&'static CreateInterlocutorInput> for Vec<Interlocutor> {
 
 // Define the json structure of the interlocutors
 #[derive(GraphQLInputObject, Clone)]
-pub struct CreateInterlocutorsInput {
-    pub interlocutors_list: Vec<CreateInterlocutorInput>,
+pub struct InterlocutorsInput {
+    pub interlocutors_list: Vec<InterlocutorInput>,
 }
