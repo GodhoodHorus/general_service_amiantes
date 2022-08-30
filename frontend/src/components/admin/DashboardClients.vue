@@ -10,8 +10,20 @@
             <dashboard-button type="click" id="search_client" class="bg-blue w-300px mr-1rem"  value="Search" />
             <dashboard-button @click.prevent="openClientPopUp" type="click" id="creat_new_client" class="bg-dark w-300px"  value="Create" />
           </div>
-          <div class="table-data mt-4rem">
-            <dashboard-table :head_list="header_client_table" :body_list="clients" key="clientsKey" />
+          <div  class="table-data mt-4rem">
+            <table class="table-auto border-collapse border border-blue w-full text-center">
+              <thead>
+              <tr>
+                <th v-for="header in header_client_table" class="border border-blue py-1rem">{{ header }}</th>
+              </tr>
+              </thead>
+              <tbody >
+              <tr v-if="clients" v-for="(items, index) in clients" :key="index">
+                <td v-if="index % 2 !== 0" v-for="item in items" class="border border-blue py-1rem bg-slate-200" >{{ item }}</td>
+                <td v-if="index % 2 === 0"  v-for="item in items" class="border border-blue py-1rem">{{ item }}</td>
+              </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -67,28 +79,34 @@ import {ref} from "vue";
 import {useMutation, useQuery} from "@vue/apollo-composable";
 import {CREATE_CLIENT, GET_CLIENTS} from "../../graphql/Client.ts";
 
+
+
 export default {
   name: "DashboardClients",
   components: { DashboardButton, DashboardHeader, DashboardAside, DashboardMain, DashboardTable },
-  data() {
-    const offset = ref(10);
-    const clients = ref([])
+  mounted() {
+    if (isNaN(this.$route.query.offset))
+      this.offset = 0
+    else
+      this.offset = Number(this.$route.query.offset)
 
-    const { onResult, variables }  = useQuery(
+    const variables = ref({
+      offset: this.offset
+    })
+
+    const {onResult} = useQuery(
         GET_CLIENTS,
-        {
-          errorPolicy: "all",
-          offset
-        }
+        variables
     )
 
     onResult(result => {
-      return this.propagateCreatedClient(result.data.clients)
+      return this.clients = this.propagateClient(result.data.clients)
     })
-
+  },
+  data() {
     return {
-      clients,
-      offset,
+      clients: [],
+      offset: ref(0),
       header_client_table: [
           'id',
           'name',
@@ -101,8 +119,7 @@ export default {
       create_client_interlocutors: ref([]),
       create_client_created_at: ref(''),
       create_client_edited_at: ref(''),
-      create_client_network_error: ref(''),
-      clientsKey: ref(0)
+      create_client_network_error: ref('')
     }
   },
   methods: {
@@ -117,11 +134,11 @@ export default {
       popup.classList.replace('visible', 'invisible')
 
     },
-    handleNewClient() {
+    async handleNewClient() {
       if (this.create_client_address.street === '' && this.create_client_address.streetNumber === 0)
         return null
 
-      const { mutate, onError, onDone }  = useMutation(
+      const { mutate, onError }  = useMutation(
           CREATE_CLIENT,
           {
             errorPolicy: "all",
@@ -133,29 +150,28 @@ export default {
           }
       )
 
-      onDone(result => {
-
+      let client = await mutate().then((result) => {
         if (result.errors) {
           return this.create_client_network_error = result.errors[0]?.message
         }
 
-        return this.propagateCreatedClient(result.data.createClient)
+        this.closeClientPopUp()
+
+        return this.formatClientResult(result.data.createClient)
       })
+
+      this.clients.splice(this.clients.length, 0, client[0])
 
       onError(error => {
-        this.create_client_network_error = error.networkError?.message
+        return this.create_client_network_error = error.networkError?.message
       })
 
-      mutate()
     },
 
-    propagateCreatedClient(data) {
-      let temp_clients = this.clients
+    propagateClient(data) {
+      let temp_clients = []
 
       for (let i = 0; i < data.length; i++) {
-
-        this.forceRerender()
-
         temp_clients.push([
           data[i].id,
           data[i].name,
@@ -165,15 +181,23 @@ export default {
         ])
       }
 
+      console.table(data)
 
       return temp_clients
     },
 
-    addInterlocutor() {
+    formatClientResult(data) {
+      let temp_clients = []
 
-    },
-    forceRerender () {
-      this.clientsKey += 1;
+      temp_clients.push([
+        data.id,
+        data.name,
+        data.address.streetNumber + ', ' +  data.address.street,
+        data.createdAt,
+        data.editedAt,
+      ])
+
+      return temp_clients
     }
   }
 }
